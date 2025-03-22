@@ -33,7 +33,7 @@ public class AMOApplication implements Application {
             Map<Long, Result> clientRequests = clientHistory.get(clientId);
             if (clientRequests.containsKey(requestId)) {
                 // We've already executed this command, return the cached result
-                return new AMOResult(clientRequests.get(requestId), clientId, requestId);
+                return new AMOResult(clientRequests.get(requestId));
             }
         }
 
@@ -44,7 +44,7 @@ public class AMOApplication implements Application {
         clientHistory.putIfAbsent(clientId, new HashMap<>());
         clientHistory.get(clientId).put(requestId, result);
 
-        return new AMOResult(result, clientId, requestId);
+        return new AMOResult(result);
     }
 
     public Result executeReadOnly(Command cmd) {

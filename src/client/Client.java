@@ -23,7 +23,7 @@ public class Client {
     public Client(long clientId, Server server, long timeoutMs) {
         this.clientId = clientId;
         this.requestIdCounter = new AtomicLong(0);
-        this.scheduler = Executors.newScheduledThreadPool(2);
+        this.scheduler = Executors.newScheduledThreadPool(1);
         this.timeoutMs = timeoutMs;
         this.server = server;
     }
@@ -54,34 +54,6 @@ public class Client {
         }
     }
 
-    public Reply socketReplyToObj(String socketReply) {
-        // parse this "Reply: " + resultStr + " Server ID: " + serverId + " Request ID: " + requestId;
-        String[] parts = socketReply.split(" ");
-        String resultStr = parts[1];
-        // parse something like this return "AMOResult: " + "PutOk: " + "Key: " + key + " Value: " + value;
-        String[] resultParts = resultStr.split(" ");
-        String resultName = resultParts[0];
-        Result result = null;
-        if (resultName.equals("PutOk:")) {
-            String key = resultParts[2];
-            String value = resultParts[4];
-            result = new PutOk();
-        } else if (resultName.equals("GetResult:")) {
-            String value = resultParts[2];
-            result = new GetResult(value);
-        } else if (resultName.equals("KeyNotFound:")) {
-            String key = resultParts[2];
-            result = new KeyNotFound(key);
-        } else if (resultName.equals("AppendResult:")) {
-            String newValue = resultParts[2];
-            result = new AppendResult(newValue);
-        } else {
-            throw new RuntimeException("Unknown result: " + resultName);
-        }
-        long serverId = Long.parseLong(parts[4]);
-        long requestId = Long.parseLong(parts[7]);
-        return new Reply(result, serverId, requestId);
-    }
     public void shutdown() {
         scheduler.shutdown();
     }

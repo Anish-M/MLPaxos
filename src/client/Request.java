@@ -3,45 +3,46 @@ package client;
 import commands.Command;
 import java.io.Serializable;
 
-public class Request implements Serializable {
-    private static final long serialVersionUID = 1L;
-    private final Command command;
+import commands.Command;
 
-    private final long clientId;
-    private final long requestId;
+/**
+ * Updated Request class with support for network information
+ */
+public class Request {
+    private final Command command;
+    private String clientIp;
+    private int clientPort;
+    private long requestId;
 
     public Request(Command command) {
         this.command = command;
         if (command instanceof commands.AMOCommand) {
-            this.clientId = ((commands.AMOCommand) command).getClientId();
-            this.requestId = ((commands.AMOCommand) command).getRequestId();
-        } else {
-            this.clientId = -1;
-            this.requestId = -1;
+            commands.AMOCommand amoCommand = (commands.AMOCommand) command;
+            this.requestId = amoCommand.getRequestId();
         }
-    }
-
-    public Request(Command command, long clientId, long requestId) {
-        this.command = command;
-        this.clientId = clientId;
-        this.requestId = requestId;
     }
 
     public Command getCommand() {
         return command;
     }
 
-    public long getClientId() {
-        return clientId;
+    public String getClientIp() {
+        return clientIp;
+    }
+
+    public void setClientIp(String clientIp) {
+        this.clientIp = clientIp;
+    }
+
+    public int getClientPort() {
+        return clientPort;
+    }
+
+    public void setClientPort(int clientPort) {
+        this.clientPort = clientPort;
     }
 
     public long getRequestId() {
         return requestId;
     }
-
-    public String socketRequest() {
-        String commandStr = command.toString();
-        return "Request: " + commandStr + " Client ID: " + clientId + " Request ID: " + requestId;
-    }
-
 }
