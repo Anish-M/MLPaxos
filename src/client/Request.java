@@ -4,14 +4,13 @@ import commands.Command;
 import java.io.Serializable;
 
 import commands.Command;
+import networking.MessageBody;
 
 /**
  * Updated Request class with support for network information
  */
-public class Request {
+public class Request extends MessageBody implements Serializable {
     private final Command command;
-    private String clientIp;
-    private int clientPort;
     private long requestId;
 
     public Request(Command command) {
@@ -26,23 +25,12 @@ public class Request {
         return command;
     }
 
-    public String getClientIp() {
-        return clientIp;
-    }
-
-    public void setClientIp(String clientIp) {
-        this.clientIp = clientIp;
-    }
-
-    public int getClientPort() {
-        return clientPort;
-    }
-
-    public void setClientPort(int clientPort) {
-        this.clientPort = clientPort;
-    }
 
     public long getRequestId() {
         return requestId;
+    }
+
+    public String toString() {
+        return "Request: " + command.toString();
     }
 }

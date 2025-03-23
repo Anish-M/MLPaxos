@@ -1,5 +1,8 @@
 package networking;
 
+import client.Reply;
+import client.Request;
+
 import java.io.Serializable;
 
 /**
@@ -8,11 +11,14 @@ import java.io.Serializable;
  */
 public class Message implements Serializable {
     private final String senderIp;
+
     private final int senderPort;
+
     private final String receiverIp;
     private final int receiverPort;
-    private final String messageBody;
-    private final MessageType type;
+    private final MessageBody messageBody;
+
+    private MessageType type;
 
     public enum MessageType {
         REQUEST,
@@ -21,13 +27,21 @@ public class Message implements Serializable {
     }
 
     public Message(String senderIp, int senderPort, String receiverIp, int receiverPort,
-                   String messageBody, MessageType type) {
+                   MessageBody messageBody) {
         this.senderIp = senderIp;
         this.senderPort = senderPort;
         this.receiverIp = receiverIp;
         this.receiverPort = receiverPort;
         this.messageBody = messageBody;
-        this.type = type;
+
+        if (messageBody instanceof Request) {
+            this.type = MessageType.REQUEST;
+        } else if (messageBody instanceof Reply) {
+            this.type = MessageType.REPLY;
+        } else {
+            this.type = MessageType.HEARTBEAT;
+        }
+
     }
 
     public String getSenderIp() {
@@ -38,6 +52,8 @@ public class Message implements Serializable {
         return senderPort;
     }
 
+
+
     public String getReceiverIp() {
         return receiverIp;
     }
@@ -46,7 +62,7 @@ public class Message implements Serializable {
         return receiverPort;
     }
 
-    public String getMessageBody() {
+    public MessageBody getMessageBody() {
         return messageBody;
     }
 
@@ -57,35 +73,8 @@ public class Message implements Serializable {
     @Override
     public String toString() {
         return type + ": " + messageBody +
-                " Sender: " + senderIp + ":" + senderPort +
+                " Sender: " + senderIp +
                 " Receiver: " + receiverIp + ":" + receiverPort;
     }
 
-    /**
-     * Create a message from a string representation
-     */
-    public static Message fromString(String messageStr) {
-        String[] parts = messageStr.split(" ");
-
-        MessageType type = parts[0].equals("Request:") ? MessageType.REQUEST : MessageType.REPLY;
-
-        // Extract sender info
-        String[] senderInfo = parts[9].split(":");
-        String senderIp = senderInfo[0];
-        int senderPort = Integer.parseInt(senderInfo[1]);
-
-        // Extract receiver info
-        String[] receiverInfo = parts[11].split(":");
-        String receiverIp = receiverInfo[0];
-        int receiverPort = Integer.parseInt(receiverInfo[1]);
-
-        // Extract message body (everything between type and sender)
-        StringBuilder bodyBuilder = new StringBuilder();
-        for (int i = 1; i < 9; i++) {
-            bodyBuilder.append(parts[i]).append(" ");
-        }
-        String messageBody = bodyBuilder.toString().trim();
-
-        return new Message(senderIp, senderPort, receiverIp, receiverPort, messageBody, type);
-    }
 }

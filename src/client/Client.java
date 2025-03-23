@@ -1,60 +1,106 @@
 package client;
-// Client.java
-import application.Application;
-import client.ClientTimer;
-import client.Reply;
-import client.Request;
-import commands.AMOCommand;
-import commands.Command;
-import results.*;
-import server.Server;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
+import networking.Heartbeat;
+import networking.Message;
+import networking.MessageBody;
+
+import java.io.*;
+import java.net.*;
+import java.util.Scanner;
 
 public class Client {
-    private final long clientId;
-    private final AtomicLong requestIdCounter;
-    private final ScheduledExecutorService scheduler;
-    private final long timeoutMs;
-    private final Server server;
+    private final String clientIp = "127.0.0.1";
+    private final int clientPort;
+    private ServerSocket clientSocket;
 
-    public Client(long clientId, Server server, long timeoutMs) {
-        this.clientId = clientId;
-        this.requestIdCounter = new AtomicLong(0);
-        this.scheduler = Executors.newScheduledThreadPool(1);
-        this.timeoutMs = timeoutMs;
-        this.server = server;
+    public Client() throws IOException {
+        // Dynamically allocate a port for the client
+        ServerSocket tempSocket = new ServerSocket(0);
+        this.clientPort = tempSocket.getLocalPort();
+        tempSocket.close();
     }
 
-    public Result execute(Command cmd) {
-        long requestId = requestIdCounter.getAndIncrement();
-        AMOCommand amoCmd = new AMOCommand(cmd, clientId, requestId);
-        Request request = new Request(amoCmd);
+    public void startClient() {
+        try {
+            clientSocket = new ServerSocket(clientPort);
+            System.out.println("[CLIENT] Listening for messages on port " + clientPort);
 
-        // Create and start a timer for this request
-        ClientTimer timer = new ClientTimer(scheduler, () -> {
-            // Retry the request if timeout occurs
-            server.handleRequest(request);
-        }, timeoutMs);
-        timer.start();
-
-        // Send the request to the server
-        Reply reply = server.handleRequest(request);
-
-        // Cancel the timer as we got a response
-        timer.cancel();
-
-        if (reply.getResult() instanceof AMOResult) {
-            AMOResult amoResult = (AMOResult) reply.getResult();
-            return amoResult.getResult();
-        } else {
-            throw new RuntimeException("Expected AMOResult but got: " + reply.getResult().getClass().getName());
+            // Start a thread to receive messages
+            new Thread(this::receiveMessage).start();
+        } catch (IOException e) {
+            System.err.println("[CLIENT] Error starting client: " + e.getMessage());
         }
     }
 
-    public void shutdown() {
-        scheduler.shutdown();
+    public void sendMessage(String serverIp, int serverPort, MessageBody messageBody) {
+        try (Socket socket = new Socket(serverIp, serverPort);
+             ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream())) {
+
+            Message message = new Message(clientIp, clientPort, serverIp, serverPort, messageBody);
+            out.writeObject(message);
+            out.flush();
+
+            System.out.println("[CLIENT] Sent MESSAGE to SERVER " + serverIp + ":" + serverPort);
+
+        } catch (IOException e) {
+            System.err.println("[CLIENT] Error sending message to SERVER " + serverIp + ":" + serverPort + ": " + e.getMessage());
+        }
+    }
+
+    public void receiveMessage() {
+        while (true) {
+            try (Socket socket = clientSocket.accept();
+                 ObjectInputStream in = new ObjectInputStream(socket.getInputStream())) {
+
+                Message message = (Message) in.readObject();
+                processReceivedMessage(message);
+
+            } catch (IOException | ClassNotFoundException e) {
+                System.err.println("[CLIENT] Error receiving message: " + e.getMessage());
+            }
+        }
+    }
+
+    private void processReceivedMessage(Message message) {
+        if (message.getMessageBody() instanceof Heartbeat) {
+            System.out.println("[CLIENT] Received HEARTBEAT from SERVER " + message.getSenderIp() + ":" + message.getSenderPort());
+        } else {
+            System.out.println("[CLIENT] Received unknown message type");
+        }
+    }
+
+    public void sendHeartbeat(String serverIp, int serverPort) {
+        sendMessage(serverIp, serverPort, new Heartbeat());
+    }
+
+    public static void main(String[] args) {
+        try {
+            Client client = new Client();
+            client.startClient();
+
+            Scanner scanner = new Scanner(System.in);
+
+            // Allow user to manually send heartbeats
+            while (true) {
+                System.out.print("[CLIENT] Enter server IP and port (format: 127.0.0.1:5000) to send heartbeat, or type 'exit': ");
+                String input = scanner.nextLine();
+                if (input.equalsIgnoreCase("exit")) {
+                    break;
+                }
+
+                String[] parts = input.split(":");
+                if (parts.length == 2) {
+                    String serverIp = parts[0];
+                    int serverPort = Integer.parseInt(parts[1]);
+                    client.sendHeartbeat(serverIp, serverPort);
+                } else {
+                    System.out.println("[CLIENT] Invalid format. Use 127.0.0.1:port.");
+                }
+            }
+
+            scanner.close();
+        } catch (IOException e) {
+            System.err.println("[CLIENT] Failed to start: " + e.getMessage());
+        }
     }
 }

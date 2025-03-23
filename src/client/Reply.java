@@ -1,9 +1,10 @@
 package client;
 
+import networking.MessageBody;
 import results.Result;
 import java.io.Serializable;
 
-public class Reply {
+public class Reply extends MessageBody implements Serializable {
     private final Result result;
 
     public Reply(Result result) {

@@ -31,4 +31,9 @@ public class AMOCommand implements Command {
     public Result execute(Application app) {
         return app.execute(this);
     }
+
+    @Override
+    public String toString() {
+        return "AMOCommand: " + command.toString();
+    }
 }
