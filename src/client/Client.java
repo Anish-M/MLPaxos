@@ -1,11 +1,16 @@
 package client;
 
+import commands.Command;
 import networking.Heartbeat;
 import networking.Message;
 import networking.MessageBody;
+import results.AMOResult;
+import results.Result;
 
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Scanner;
 
 public class Client {
@@ -13,11 +18,16 @@ public class Client {
     private final int clientPort;
     private ServerSocket clientSocket;
 
+    private HashMap<Long, Result> commandIdToResult;
+
+    private ArrayList<String> serverAddressesIpPort;
+
     public Client() throws IOException {
         // Dynamically allocate a port for the client
         ServerSocket tempSocket = new ServerSocket(0);
         this.clientPort = tempSocket.getLocalPort();
         tempSocket.close();
+        commandIdToResult = new HashMap<>();
     }
 
     public void startClient() {
@@ -29,6 +39,15 @@ public class Client {
             new Thread(this::receiveMessage).start();
         } catch (IOException e) {
             System.err.println("[CLIENT] Error starting client: " + e.getMessage());
+        }
+    }
+
+    public void broadcastMessage(MessageBody messageBody) {
+        for (String serverAddress : serverAddressesIpPort) {
+            String[] parts = serverAddress.split(":");
+            String serverIp = parts[0];
+            int serverPort = Integer.parseInt(parts[1]);
+            sendMessage(serverIp, serverPort, messageBody);
         }
     }
 
@@ -62,15 +81,15 @@ public class Client {
     }
 
     private void processReceivedMessage(Message message) {
-        if (message.getMessageBody() instanceof Heartbeat) {
-            System.out.println("[CLIENT] Received HEARTBEAT from SERVER " + message.getSenderIp() + ":" + message.getSenderPort());
+        String senderIpPort = message.getSenderIp() + ":" + message.getSenderPort();
+        if (message.getMessageBody() instanceof Reply) {
+            AMOResult amoResult = (AMOResult) ((Reply) message.getMessageBody()).getResult();
+            Result result = amoResult.getResult();
+            commandIdToResult.put(amoResult.getRequestId(), result);
+            System.out.println("[CLIENT] Received REPLY from SERVER " + senderIpPort + ": " + result);
         } else {
             System.out.println("[CLIENT] Received unknown message type");
         }
-    }
-
-    public void sendHeartbeat(String serverIp, int serverPort) {
-        sendMessage(serverIp, serverPort, new Heartbeat());
     }
 
     public static void main(String[] args) {
@@ -81,22 +100,7 @@ public class Client {
             Scanner scanner = new Scanner(System.in);
 
             // Allow user to manually send heartbeats
-            while (true) {
-                System.out.print("[CLIENT] Enter server IP and port (format: 127.0.0.1:5000) to send heartbeat, or type 'exit': ");
-                String input = scanner.nextLine();
-                if (input.equalsIgnoreCase("exit")) {
-                    break;
-                }
 
-                String[] parts = input.split(":");
-                if (parts.length == 2) {
-                    String serverIp = parts[0];
-                    int serverPort = Integer.parseInt(parts[1]);
-                    client.sendHeartbeat(serverIp, serverPort);
-                } else {
-                    System.out.println("[CLIENT] Invalid format. Use 127.0.0.1:port.");
-                }
-            }
 
             scanner.close();
         } catch (IOException e) {

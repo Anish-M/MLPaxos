@@ -108,12 +108,26 @@ public class Server {
     }
 
     private void processReceivedMessage(Message message) {
+        // message from client
         String senderIpPort = message.getSenderIp() + ":" + message.getSenderPort();
+        if (clientAddresses.contains(senderIpPort)){
+            processReceivedMessageFromClient(message);
+            return;
+        }
+
         if (message.getMessageBody() instanceof Heartbeat) {
             System.out.println("[SERVER " + serverId + "] Received HEARTBEAT from SERVER " + serverIpToId.get(senderIpPort));
         } else {
             System.out.println("[SERVER " + serverId + "] Received unknown message type");
         }
+    }
+
+    private void processReceivedMessageFromClient(Message message) {
+        Request request = (Request) message.getMessageBody();
+        Result result = app.execute(request.getCommand());
+        Reply reply = new Reply(result);
+        Message replyMessage = new Message(myIp, myListenPort, message.getSenderIp(), message.getSenderPort(), reply);
+        sendMessage(replyMessage);
     }
 
 
@@ -140,6 +154,21 @@ public class Server {
             serverIpToId.put("127.0.0.1:" + port1, 1);
             serverIpToId.put("127.0.0.1:" + port2, 2);
             serverIpToId.put("127.0.0.1:" + port3, 3);
+
+            // write out this map to a file so that the client can read it
+            try {
+                FileOutputStream fileOut = new FileOutputStream("serverIpToId.txt");
+                ObjectOutputStream out = new ObjectOutputStream(fileOut);
+                for (Map.Entry<String, Integer> entry : serverIpToId.entrySet()) {
+                    out.writeObject(entry.getKey());
+                    out.writeObject(entry.getValue());
+                }
+                out.close();
+                fileOut.close();
+                System.out.println("Serialized data is saved in serverIpToId.ser");
+            } catch (IOException i) {
+                i.printStackTrace();
+            }
 
 
             Server server1 = new Server(new AMOApplication(new KVStore()), server1List, new ArrayList<>(), port1, serverIpToId);
