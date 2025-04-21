@@ -6,6 +6,8 @@ import results.Result;
 public abstract class KVStoreCommand implements Command {
     protected String key;
 
+    public KVStoreCommand() {
+    }
     public KVStoreCommand(String key) {
         this.key = key;
     }

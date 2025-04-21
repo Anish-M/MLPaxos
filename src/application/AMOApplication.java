@@ -51,4 +51,8 @@ public class AMOApplication implements Application {
         // For non-AMO read-only commands
         return app.execute(cmd);
     }
+
+    public String toString() {
+        return app.toString();
+    }
 }

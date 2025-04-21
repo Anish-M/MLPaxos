@@ -2,9 +2,9 @@ package commands;
 
 import results.Result;
 import application.Application;
-
+import networking.*;
 // AMOCommand.java
-public class AMOCommand implements Command {
+public class AMOCommand extends MessageBody implements Command {
     private final Command command;
     private final long clientId;
     private final long requestId;
@@ -34,6 +34,6 @@ public class AMOCommand implements Command {
 
     @Override
     public String toString() {
-        return "AMOCommand: " + command.toString();
+        return "[" + clientId + ", " + requestId + "] AMOCommand: " + command.toString();
     }
 }

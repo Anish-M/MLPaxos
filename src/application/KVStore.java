@@ -51,4 +51,13 @@ public class KVStore implements Application {
         return new AppendResult(newValue);
     }
 
+    public String toString() {
+        String s = "KVStore: {";
+        for (Map.Entry<String, String> entry : store.entrySet()) {
+            s += entry.getKey() + ": " + entry.getValue() + ", ";
+        }
+        s += "}";
+        return s;
+    }
+
 }
